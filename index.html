@@ -165,10 +165,15 @@
 
     // Zaten Çıkış Yapmış
     if(student.scannedToday) {
-      playFeedback('warn');
-      setResult('warn', `<div class="name">${student.name}</div><div class="meta">Sınıf: ${student.className || ''}</div><div>⚠️ Zaten çıkış yapmış.</div>`);
+      playFeedback('err'); // Telefonun uyarı için daha güçlü titreşmesini sağlar
+      setResult('err', `
+        <div style="font-size: 4rem; line-height: 1; margin-bottom: 5px;">❗</div>
+        <div class="name">${student.name}</div>
+        <div class="meta">Sınıf: ${student.className || ''}</div>
+        <div style="font-size: 1.2rem; font-weight: bold; margin-top: 8px;">BU ÖĞRENCİ ZATEN ÇIKIŞ YAPMIŞ!</div>
+      `);
       addLog(student.name, nowTime, 'warn');
-    } 
+    }
     // İlk Çıkış (Sıfır Bekleme)
     else {
       playFeedback('ok');
