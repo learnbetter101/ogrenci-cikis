@@ -164,15 +164,16 @@
     }
 
     // Zaten Çıkış Yapmış
+    // Zaten Çıkış Yapmış
     if(student.scannedToday) {
-      playFeedback('err'); // Telefonun uyarı için daha güçlü titreşmesini sağlar
+      playFeedback('err'); 
       setResult('err', `
-        <div style="font-size: 4rem; line-height: 1; margin-bottom: 3px;">❗</div>
-        <div class="name">${student.name}</div>
+        <div style="font-size: 2.5rem; line-height: 1;">❗</div>
+        <div class="name" style="line-height: 1.1;">${student.name}</div>
         <div class="meta">Sınıf: ${student.className || ''}</div>
-        <div style="font-size: 1.0rem; font-weight: bold; margin-top: 5px;">TEKRAR ÇIKIŞ YAPILAMAZ!</div>
+        <div style="font-size: 1.1rem; font-weight: bold; margin-top: 5px;">TEKRAR ÇIKIŞ YAPILAMAZ!</div>
       `);
-      addLog(student.name, nowTime, 'warn');
+      addLog(student.name, nowTime, 'err'); // Loglarda da sarı uyarı yerine kırmızı ❌ çıkması için 'err' yaptık
     }
     // İlk Çıkış (Sıfır Bekleme)
     else {
