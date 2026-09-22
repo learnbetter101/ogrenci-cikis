@@ -243,10 +243,16 @@
   // olmadan kameraya izin vermiyor).
 
   // ---- ORTAK: SUNUCUYA SORGULAMA ----
-  async function handleId(id) {
-    setResult('idle', 'Sorgulanıyor...');
+    async function handleId(id, retryCount) {
+    retryCount = retryCount || 0;
+    setResult('idle', retryCount > 0 ? 'Tekrar deneniyor...' : 'Sorgulanıyor...');
+
     try {
-      const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id));
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 sn zaman aşımı
+
+      const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id), { signal: controller.signal });
+      clearTimeout(timeoutId);
       const data = await res.json();
 
       if (!data.found) {
@@ -263,8 +269,12 @@
         addLog(data.name, data.time, 'ok');
       }
     } catch(err) {
+      if (retryCount < 2) {
+        await new Promise(r => setTimeout(r, 1500));
+        return handleId(id, retryCount + 1);
+      }
       playFeedback('err');
-      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">İnternet bağlantısını veya Apps Script URL adresinizi kontrol edin.</div>');
+      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">2 kez denendi, başarısız oldu. İnternet bağlantınızı kontrol edip tekrar deneyin.</div>');
     }
   }
 
