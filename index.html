@@ -42,13 +42,11 @@
     font-size: 0.85rem; cursor: pointer; padding: 4px; align-self: center;
   }
 
-  /* Canlı kamera görüntüleyici */
   #reader {
     width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
     min-height: 220px; background: #000;
   }
   #reader video { border-radius: 12px; }
-  /* html5-qrcode kendi kütüphane içi bazı yardımcı elemanları ekliyor, sade görünmesi için küçültüyoruz */
   #reader img { display: none; }
   #reader__dashboard_section_csr button { display: none !important; }
 
@@ -78,23 +76,18 @@
     <h1>Öğrenci Çıkış Kontrolü</h1>
   </header>
 
-  <!-- Kamera, kullanıcı dokunmadan tarayıcılar tarafından otomatik açılmasına izin vermiyor -->
   <button class="bigbtn" id="startBtn">🎥 Kamerayı Başlat (Otomatik Tarama)</button>
 
-  <!-- CANLI TARAMA: kamera akışını burada gösterir, QR kodu otomatik algılar -->
   <div id="reader" class="hidden"></div>
   <button class="linkbtn hidden" id="manualFallbackLink">Kamera açılmıyor mu? Fotoğraf çekerek dene</button>
 
-  <!-- YEDEK YÖNTEM: canlı tarama başarısız olursa (ör. HTTPS yoksa) bu görünür -->
   <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
   <button class="bigbtn hidden" id="snapBtn">
     📷 QR Kodun Fotoğrafını Çek
   </button>
 
-  <!-- Sonuç Kartı -->
   <div class="result idle" id="result">QR kod okutulmayı bekliyor...</div>
 
-  <!-- Bugünkü Okuma Günlüğü -->
   <div class="log">
     <h2>Son Taramalar</h2>
     <ul id="logList"></ul>
@@ -103,8 +96,8 @@
 
 <script>
 (function(){
-  // ⬇️ 1. BURAYA KENDİ APPS SCRIPT WEB APP LINKINIZI YAZIN ⬇️
-  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTrOdXHZtXeo_Pg_Prt43TSaXj7LakxTev05RC6QXVlMR1KIAwu4pb6HW7JhaYKE41Nw/exec;"
+  // ⬇️ Düzeltilmiş Web App URL'si (Tırnak içindeki noktalı virgül kaldırıldı)
+  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTrOdXHZtXeo_Pg_Prt43TSaXj7LakxTev05RC6QXVlMR1KIAwu4pb6HW7JhaYKE41Nw/exec";
 
   const startBtn = document.getElementById('startBtn');
   const readerEl = document.getElementById('reader');
@@ -118,7 +111,6 @@
   let liveModeActive = false;
   let isProcessing = false;
 
-  // Titreşim Bildirimleri
   function playFeedback(type) {
     if ('vibrate' in navigator) {
       if (type === 'ok') navigator.vibrate([100, 50, 100]);
@@ -139,7 +131,6 @@
     logList.insertBefore(li, logList.firstChild);
   }
 
-  // ---- CANLI TARAMA (öncelikli yöntem, HTTPS/localhost + kullanıcı dokunuşu gerektirir) ----
   function startLiveScanning() {
     startBtn.classList.add('hidden');
     readerEl.classList.remove('hidden');
@@ -149,7 +140,7 @@
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 250, height: 250 } },
       onLiveScanSuccess,
-      () => { /* kare içinde QR bulunamadı, sessizce yoksay */ }
+      () => { }
     ).then(() => {
       liveModeActive = true;
       manualFallbackLink.classList.remove('hidden');
@@ -167,7 +158,6 @@
     isProcessing = true;
     try { await html5QrCode.pause(true); } catch(e) {}
     await handleId(decodedText.trim());
-    // Aynı kodu art arda okumamak ve öğrenciye sonucu gösterebilmek için kısa bekleme
     setTimeout(() => {
       isProcessing = false;
       if (liveModeActive) {
@@ -176,7 +166,6 @@
     }, 2000);
   }
 
-  // ---- FOTOĞRAF ÇEKEREK TARAMA (yedek yöntem, HTTPS gerektirmez) ----
   function switchToPhotoMode() {
     liveModeActive = false;
     startBtn.classList.add('hidden');
@@ -205,7 +194,6 @@
 
     let decodedText = null;
 
-    // 1. MOTOR: Cihazın yerleşik hızlı QR algılayıcısı
     if ('BarcodeDetector' in window) {
       try {
         const detector = new BarcodeDetector({ formats: ['qr_code'] });
@@ -219,7 +207,6 @@
       }
     }
 
-    // 2. MOTOR: Yedek kütüphane motoru
     if (!decodedText) {
       try {
         decodedText = await html5QrCode.scanFile(file, true);
@@ -232,24 +219,19 @@
       await handleId(decodedText.trim());
     } else {
       playFeedback('err');
-      setResult('err', '<div class="name">QR Kod Okunamadı</div><div class="meta">Lütfen fotoğrafı biraz daha yakın ve net çekin.<br>Google Sheets formülündeki boyutu <b>400x400</b> yaptığınızdan emin olun.</div>');
+      setResult('err', '<div class="name">QR Kod Okunamadı</div><div class="meta">Lütfen fotoğrafı biraz daha yakın ve net çekin.</div>');
     }
 
     cameraInput.value = '';
   });
 
-  // Not: canlı tarama artık sayfa açılır açılmaz değil, "Kamerayı Başlat"
-  // butonuna dokunulunca başlıyor (mobil tarayıcılar kullanıcı dokunuşu
-  // olmadan kameraya izin vermiyor).
-
-  // ---- ORTAK: SUNUCUYA SORGULAMA ----
-    async function handleId(id, retryCount) {
+  async function handleId(id, retryCount) {
     retryCount = retryCount || 0;
     setResult('idle', retryCount > 0 ? 'Tekrar deneniyor...' : 'Sorgulanıyor...');
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 sn zaman aşımı
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 saniye zaman aşımlı
 
       const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id), { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -270,11 +252,11 @@
       }
     } catch(err) {
       if (retryCount < 2) {
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 1000));
         return handleId(id, retryCount + 1);
       }
       playFeedback('err');
-      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">2 kez denendi, başarısız oldu. İnternet bağlantınızı kontrol edip tekrar deneyin.</div>');
+      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.</div>');
     }
   }
 
