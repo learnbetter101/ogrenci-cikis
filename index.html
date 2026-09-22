@@ -82,9 +82,7 @@
   <button class="linkbtn hidden" id="manualFallbackLink">Kamera açılmıyor mu? Fotoğraf çekerek dene</button>
 
   <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
-  <button class="bigbtn hidden" id="snapBtn">
-    📷 QR Kodun Fotoğrafını Çek
-  </button>
+  <button class="bigbtn hidden" id="snapBtn">📷 QR Kodun Fotoğrafını Çek</button>
 
   <div class="result idle" id="result">QR kod okutulmayı bekliyor...</div>
 
@@ -96,10 +94,8 @@
 
 <script>
 (function(){
-  // ⬇️ Düzeltilmiş Web App URL'si (Tırnak içindeki noktalı virgül kaldırıldı)
-  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzTrOdXHZtXeo_Pg_Prt43TSaXj7LakxTev05RC6QXVlMR1KIAwu4pb6HW7JhaYKE41Nw/exec";
-  
-  
+  // Kalıcı ve doğrulanmış Apps Script Web App Adresi
+  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyri1cvRuLphDg7yVA-SSvT3whYUg3Fdaf7BtIASF-e4I43wnQKzwT9ZcyMvWE7-2C3GA/exec";
 
   const startBtn = document.getElementById('startBtn');
   const readerEl = document.getElementById('reader');
@@ -148,7 +144,6 @@
       manualFallbackLink.classList.remove('hidden');
       setResult('idle', 'QR kod okutulmayı bekliyor...');
     }).catch((err) => {
-      console.log("Canlı tarama başlatılamadı, fotoğraf yöntemine geçiliyor:", err);
       switchToPhotoMode();
     });
   }
@@ -177,9 +172,7 @@
     setResult('idle', 'QR kod okutulmayı bekliyor...');
   }
 
-  snapBtn.addEventListener('click', () => {
-    cameraInput.click();
-  });
+  snapBtn.addEventListener('click', () => cameraInput.click());
 
   manualFallbackLink.addEventListener('click', async () => {
     if (liveModeActive) {
@@ -190,10 +183,8 @@
 
   cameraInput.addEventListener('change', async (e) => {
     if (!e.target.files || e.target.files.length === 0) return;
-
     const file = e.target.files[0];
     setResult('idle', 'Fotoğraf taranıyor...');
-
     let decodedText = null;
 
     if ('BarcodeDetector' in window) {
@@ -201,29 +192,20 @@
         const detector = new BarcodeDetector({ formats: ['qr_code'] });
         const imageBitmap = await createImageBitmap(file);
         const barcodes = await detector.detect(imageBitmap);
-        if (barcodes.length > 0) {
-          decodedText = barcodes[0].rawValue;
-        }
-      } catch (err) {
-        console.log("1. Motor denendi:", err);
-      }
+        if (barcodes.length > 0) decodedText = barcodes[0].rawValue;
+      } catch (err) {}
     }
 
     if (!decodedText) {
-      try {
-        decodedText = await html5QrCode.scanFile(file, true);
-      } catch (err) {
-        console.log("2. Motor denendi:", err);
-      }
+      try { decodedText = await html5QrCode.scanFile(file, true); } catch (err) {}
     }
 
     if (decodedText) {
       await handleId(decodedText.trim());
     } else {
       playFeedback('err');
-      setResult('err', '<div class="name">QR Kod Okunamadı</div><div class="meta">Lütfen fotoğrafı biraz daha yakın ve net çekin.</div>');
+      setResult('err', '<div class="name">QR Kod Okunamadı</div><div class="meta">Lütfen fotoğrafı net çekin.</div>');
     }
-
     cameraInput.value = '';
   });
 
@@ -233,7 +215,7 @@
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 saniye zaman aşımlı
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id), { signal: controller.signal });
       clearTimeout(timeoutId);
@@ -253,15 +235,14 @@
         addLog(data.name, data.time, 'ok');
       }
     } catch(err) {
-      if (retryCount < 2) {
+      if (retryCount < 1) {
         await new Promise(r => setTimeout(r, 1000));
         return handleId(id, retryCount + 1);
       }
       playFeedback('err');
-      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">Sunucuya ulaşılamadı. İnternet bağlantınızı kontrol edip tekrar deneyin.</div>');
+      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">İnternet bağlantısını kontrol edin.</div>');
     }
   }
-
 })();
 </script>
 </body>
