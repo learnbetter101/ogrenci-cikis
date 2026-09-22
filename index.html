@@ -94,7 +94,7 @@
 
 <script>
 (function(){
-  // Kalıcı ve doğrulanmış Apps Script Web App Adresi
+  // Kalıcı Apps Script Web App Bağlantınız
   const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyri1cvRuLphDg7yVA-SSvT3whYUg3Fdaf7BtIASF-e4I43wnQKzwT9ZcyMvWE7-2C3GA/exec";
 
   const startBtn = document.getElementById('startBtn');
@@ -217,7 +217,13 @@
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id), { signal: controller.signal });
+      // Google oturum/çerez engellerini aşan özel istek ayarları eklendi
+      const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id), {
+        method: 'GET',
+        mode: 'cors',
+        credentials: 'omit',
+        signal: controller.signal
+      });
       clearTimeout(timeoutId);
       const data = await res.json();
 
@@ -240,7 +246,7 @@
         return handleId(id, retryCount + 1);
       }
       playFeedback('err');
-      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">İnternet bağlantısını kontrol edin.</div>');
+      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">Ağ yanıt vermedi. Lütfen tekrar deneyin.</div>');
     }
   }
 })();
