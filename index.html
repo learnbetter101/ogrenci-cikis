@@ -94,8 +94,8 @@
 
 <script>
 (function(){
-  // Kalıcı Apps Script Web App Bağlantınız
-  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyri1cvRuLphDg7yVA-SSvT3whYUg3Fdaf7BtIASF-e4I43wnQKzwT9ZcyMvWE7-2C3GA/exec";
+  // Kalıcı ve doğru Canlı Yayın Linkiniz
+  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyri1cvRuLphDg7yVA-SSvT3whYUg3Fdaf7BtlASF-e4I43wnQKzwT9ZcyMvWE7-2C3GA/exec";
 
   const startBtn = document.getElementById('startBtn');
   const readerEl = document.getElementById('reader');
@@ -215,16 +215,21 @@
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      // Bekleme süresi 20 saniyeye çıkarıldı
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
 
-      // Google oturum/çerez engellerini aşan özel istek ayarları eklendi
       const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id), {
         method: 'GET',
         mode: 'cors',
         credentials: 'omit',
+        redirect: 'follow',
         signal: controller.signal
       });
+      
       clearTimeout(timeoutId);
+      
+      if (!res.ok) throw new Error("HTTP Hatası: " + res.status);
+      
       const data = await res.json();
 
       if (!data.found) {
@@ -241,12 +246,13 @@
         addLog(data.name, data.time, 'ok');
       }
     } catch(err) {
-      if (retryCount < 1) {
+      if (retryCount < 1 && err.name !== 'AbortError') {
         await new Promise(r => setTimeout(r, 1000));
         return handleId(id, retryCount + 1);
       }
       playFeedback('err');
-      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">Ağ yanıt vermedi. Lütfen tekrar deneyin.</div>');
+      // Gerçek hata mesajı ekrana basılıyor
+      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">Hata Detayı: ' + err.message + '</div>');
     }
   }
 })();
