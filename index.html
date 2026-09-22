@@ -167,10 +167,10 @@
     if(student.scannedToday) {
       playFeedback('err'); // Telefonun uyarı için daha güçlü titreşmesini sağlar
       setResult('err', `
-        <div style="font-size: 4rem; line-height: 1; margin-bottom: 5px;">❗</div>
+        <div style="font-size: 4rem; line-height: 1; margin-bottom: 3px;">❗</div>
         <div class="name">${student.name}</div>
         <div class="meta">Sınıf: ${student.className || ''}</div>
-        <div style="font-size: 1.2rem; font-weight: bold; margin-top: 8px;">BU ÖĞRENCİ ZATEN ÇIKIŞ YAPMIŞ!</div>
+        <div style="font-size: 1.0rem; font-weight: bold; margin-top: 5px;">TEKRAR ÇIKIŞ YAPILAMAZ!</div>
       `);
       addLog(student.name, nowTime, 'warn');
     }
