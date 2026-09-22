@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Öğrenci Çıkış Kontrolü</title>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root {
+    --ink: #0f1b1a; --paper: #f2f7f5; --line: #c8d6d2; --accent: #0f6b5c;
+    --ok: #1a7a4c; --ok-bg: #e3f5ea; --warn: #a3660a; --warn-bg: #fdf1de;
+    --err: #a3271e; --err-bg: #fbe6e4;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #eef5f3; --paper: #0f1a18; --line: #264541; --accent: #3ecfb0;
+      --ok: #4fd18c; --ok-bg: #123a26; --warn: #f2b754; --warn-bg: #3a2c0e;
+      --err: #f0837a; --err-bg: #3d1815;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body);
+    padding: 15px; display: flex; flex-direction: column; align-items: center; min-height: 100vh;
+  }
+  main { max-width: 480px; width: 100%; display: flex; flex-direction: column; gap: 16px; }
+  header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+  header h1 { font-size: 1.25rem; margin: 0; }
+
+  .bigbtn {
+    background: var(--accent); color: #ffffff; border: none; border-radius: 12px;
+    font-size: 1.1rem; font-weight: 600; padding: 18px; cursor: pointer; width: 100%;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transition: transform 0.1s ease, opacity 0.1s ease;
+  }
+  .bigbtn:active { opacity: 0.85; transform: scale(0.98); }
+
+  .linkbtn {
+    background: none; border: none; color: var(--accent); text-decoration: underline;
+    font-size: 0.85rem; cursor: pointer; padding: 4px; align-self: center;
+  }
+
+  /* Canlı kamera görüntüleyici */
+  #reader {
+    width: 100%; border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+    min-height: 220px; background: #000;
+  }
+  #reader video { border-radius: 12px; }
+  /* html5-qrcode kendi kütüphane içi bazı yardımcı elemanları ekliyor, sade görünmesi için küçültüyoruz */
+  #reader img { display: none; }
+  #reader__dashboard_section_csr button { display: none !important; }
+
+  .result {
+    border-radius: 12px; padding: 20px; min-height: 110px; text-align: center;
+    border: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; gap: 6px;
+  }
+  .result.idle { opacity: 0.6; }
+  .result.ok { background: var(--ok-bg); color: var(--ok); border-color: var(--ok); }
+  .result.warn { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+  .result.err { background: var(--err-bg); color: var(--err); border-color: var(--err); }
+  .result .name { font-size: 1.5rem; font-weight: bold; }
+  .result .meta { font-size: 0.95rem; }
+
+  .log { border-top: 1px solid var(--line); padding-top: 12px; }
+  .log h2 { font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; margin: 0 0 10px; }
+  .log ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; }
+  .log li { display: flex; justify-content: space-between; font-size: 0.9rem; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<main>
+  <header>
+    <h1>Öğrenci Çıkış Kontrolü</h1>
+  </header>
+
+  <!-- Kamera, kullanıcı dokunmadan tarayıcılar tarafından otomatik açılmasına izin vermiyor -->
+  <button class="bigbtn" id="startBtn">🎥 Kamerayı Başlat (Otomatik Tarama)</button>
+
+  <!-- CANLI TARAMA: kamera akışını burada gösterir, QR kodu otomatik algılar -->
+  <div id="reader" class="hidden"></div>
+  <button class="linkbtn hidden" id="manualFallbackLink">Kamera açılmıyor mu? Fotoğraf çekerek dene</button>
+
+  <!-- YEDEK YÖNTEM: canlı tarama başarısız olursa (ör. HTTPS yoksa) bu görünür -->
+  <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display:none;">
+  <button class="bigbtn hidden" id="snapBtn">
+    📷 QR Kodun Fotoğrafını Çek
+  </button>
+
+  <!-- Sonuç Kartı -->
+  <div class="result idle" id="result">QR kod okutulmayı bekliyor...</div>
+
+  <!-- Bugünkü Okuma Günlüğü -->
+  <div class="log">
+    <h2>Son Taramalar</h2>
+    <ul id="logList"></ul>
+  </div>
+</main>
+
+<script>
+(function(){
+  // ⬇️ 1. BURAYA KENDİ APPS SCRIPT WEB APP LINKINIZI YAZIN ⬇️
+  const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx2ikiXVNn-TCypAO2C-oKtHeCCqO0hW1H5vWqbInU-n5ne8YtKKMInyLG_FmZohjTr_g/exec";
+
+  const startBtn = document.getElementById('startBtn');
+  const readerEl = document.getElementById('reader');
+  const manualFallbackLink = document.getElementById('manualFallbackLink');
+  const snapBtn = document.getElementById('snapBtn');
+  const cameraInput = document.getElementById('cameraInput');
+  const resultEl = document.getElementById('result');
+  const logList = document.getElementById('logList');
+
+  const html5QrCode = new Html5Qrcode("reader");
+  let liveModeActive = false;
+  let isProcessing = false;
+
+  // Titreşim Bildirimleri
+  function playFeedback(type) {
+    if ('vibrate' in navigator) {
+      if (type === 'ok') navigator.vibrate([100, 50, 100]);
+      else if (type === 'warn') navigator.vibrate([200]);
+      else if (type === 'err') navigator.vibrate([300, 100, 300]);
+    }
+  }
+
+  function setResult(state, html) {
+    resultEl.className = 'result ' + state;
+    resultEl.innerHTML = html;
+  }
+
+  function addLog(name, time, status) {
+    const li = document.createElement('li');
+    const symbol = status === 'ok' ? '✅' : status === 'warn' ? '⚠️' : '❌';
+    li.innerHTML = `<span>${symbol} <b>${name}</b></span><span>${time}</span>`;
+    logList.insertBefore(li, logList.firstChild);
+  }
+
+  // ---- CANLI TARAMA (öncelikli yöntem, HTTPS/localhost + kullanıcı dokunuşu gerektirir) ----
+  function startLiveScanning() {
+    startBtn.classList.add('hidden');
+    readerEl.classList.remove('hidden');
+    setResult('idle', 'Kamera açılıyor...');
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      onLiveScanSuccess,
+      () => { /* kare içinde QR bulunamadı, sessizce yoksay */ }
+    ).then(() => {
+      liveModeActive = true;
+      manualFallbackLink.classList.remove('hidden');
+      setResult('idle', 'QR kod okutulmayı bekliyor...');
+    }).catch((err) => {
+      console.log("Canlı tarama başlatılamadı, fotoğraf yöntemine geçiliyor:", err);
+      switchToPhotoMode();
+    });
+  }
+
+  startBtn.addEventListener('click', startLiveScanning);
+
+  async function onLiveScanSuccess(decodedText) {
+    if (isProcessing) return;
+    isProcessing = true;
+    try { await html5QrCode.pause(true); } catch(e) {}
+    await handleId(decodedText.trim());
+    // Aynı kodu art arda okumamak ve öğrenciye sonucu gösterebilmek için kısa bekleme
+    setTimeout(() => {
+      isProcessing = false;
+      if (liveModeActive) {
+        try { html5QrCode.resume(); } catch(e) {}
+      }
+    }, 2000);
+  }
+
+  // ---- FOTOĞRAF ÇEKEREK TARAMA (yedek yöntem, HTTPS gerektirmez) ----
+  function switchToPhotoMode() {
+    liveModeActive = false;
+    startBtn.classList.add('hidden');
+    readerEl.classList.add('hidden');
+    manualFallbackLink.classList.add('hidden');
+    snapBtn.classList.remove('hidden');
+    setResult('idle', 'QR kod okutulmayı bekliyor...');
+  }
+
+  snapBtn.addEventListener('click', () => {
+    cameraInput.click();
+  });
+
+  manualFallbackLink.addEventListener('click', async () => {
+    if (liveModeActive) {
+      try { await html5QrCode.stop(); } catch(e) {}
+    }
+    switchToPhotoMode();
+  });
+
+  cameraInput.addEventListener('change', async (e) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+
+    const file = e.target.files[0];
+    setResult('idle', 'Fotoğraf taranıyor...');
+
+    let decodedText = null;
+
+    // 1. MOTOR: Cihazın yerleşik hızlı QR algılayıcısı
+    if ('BarcodeDetector' in window) {
+      try {
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        const imageBitmap = await createImageBitmap(file);
+        const barcodes = await detector.detect(imageBitmap);
+        if (barcodes.length > 0) {
+          decodedText = barcodes[0].rawValue;
+        }
+      } catch (err) {
+        console.log("1. Motor denendi:", err);
+      }
+    }
+
+    // 2. MOTOR: Yedek kütüphane motoru
+    if (!decodedText) {
+      try {
+        decodedText = await html5QrCode.scanFile(file, true);
+      } catch (err) {
+        console.log("2. Motor denendi:", err);
+      }
+    }
+
+    if (decodedText) {
+      await handleId(decodedText.trim());
+    } else {
+      playFeedback('err');
+      setResult('err', '<div class="name">QR Kod Okunamadı</div><div class="meta">Lütfen fotoğrafı biraz daha yakın ve net çekin.<br>Google Sheets formülündeki boyutu <b>400x400</b> yaptığınızdan emin olun.</div>');
+    }
+
+    cameraInput.value = '';
+  });
+
+  // Not: canlı tarama artık sayfa açılır açılmaz değil, "Kamerayı Başlat"
+  // butonuna dokunulunca başlıyor (mobil tarayıcılar kullanıcı dokunuşu
+  // olmadan kameraya izin vermiyor).
+
+  // ---- ORTAK: SUNUCUYA SORGULAMA ----
+  async function handleId(id) {
+    setResult('idle', 'Sorgulanıyor...');
+    try {
+      const res = await fetch(DEFAULT_SCRIPT_URL + '?id=' + encodeURIComponent(id));
+      const data = await res.json();
+
+      if (!data.found) {
+        playFeedback('err');
+        setResult('err', '<div class="name">Kayıt Bulunamadı</div><div class="meta">ID: ' + id + '</div>');
+        addLog('Bilinmeyen ID (' + id + ')', new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'}), 'err');
+      } else if (data.status === 'already') {
+        playFeedback('warn');
+        setResult('warn', `<div class="name">${data.name}</div><div class="meta">Sınıf: ${data.className || ''}</div><div>⚠️ Bugün zaten çıkış yaptı (${data.time})</div>`);
+        addLog(data.name, data.time, 'warn');
+      } else {
+        playFeedback('ok');
+        setResult('ok', `<div class="name">${data.name}</div><div class="meta">Sınıf: ${data.className || ''}</div><div>✅ Çıkış Kaydedildi (${data.time})</div>`);
+        addLog(data.name, data.time, 'ok');
+      }
+    } catch(err) {
+      playFeedback('err');
+      setResult('err', '<div class="name">Bağlantı Hatası</div><div class="meta">İnternet bağlantısını veya Apps Script URL adresinizi kontrol edin.</div>');
+    }
+  }
+
+})();
+</script>
+</body>
+</html>
