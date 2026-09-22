@@ -168,18 +168,21 @@
     if(student.scannedToday) {
       playFeedback('err'); 
       setResult('err', `
-        <div style="font-size: 2.5rem; line-height: 1;">❗</div>
-        <div class="name" style="line-height: 1.1;">${student.name}</div>
-        <div class="meta">Sınıf: ${student.className || ''}</div>
-        <div style="font-size: 1.1rem; font-weight: bold; margin-top: 5px;">TEKRAR ÇIKIŞ YAPILAMAZ!</div>
+        <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: -5px 0;">
+          <div style="font-size: 2.2rem; line-height: 1;">❗</div>
+          <div style="text-align: left;">
+            <div class="name" style="font-size: 1.25rem; line-height: 1.1;">${student.name} <span class="meta" style="font-size: 0.9rem;">(${student.className || ''})</span></div>
+            <div style="font-size: 1rem; font-weight: bold; margin-top: 3px;">TEKRAR ÇIKIŞ YAPILAMAZ!</div>
+          </div>
+        </div>
       `);
-      addLog(student.name, nowTime, 'err'); // Loglarda da sarı uyarı yerine kırmızı ❌ çıkması için 'err' yaptık
+      addLog(student.name, nowTime, 'err');
     }
     // İlk Çıkış (Sıfır Bekleme)
     else {
       playFeedback('ok');
       student.scannedToday = true; // Telefon hafızasında anında çıkış yaptı olarak işaretle
-      setResult('ok', `<div class="name">${student.name}</div><div class="meta">Sınıf: ${student.className || ''}</div><div>✅ Geçebilir!</div>`);
+      setResult('ok', `<div class="name">${student.name}</div><div class="meta">Sınıf: ${student.className || ''}</div><div>✅ ÇIKABİLİR!</div>`);
       addLog(student.name, nowTime, 'ok');
 
       // Arka planda Google'a "Çıktı" bilgisini gönder (Biz beklemiyoruz, o arka planda yazsın)
