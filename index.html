@@ -72,7 +72,6 @@
 
 <script>
 (function(){
-  // Sabit ve Doğru Linkiniz
   const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyri1cvRuLphDg7yVA-SSvT3whYUg3Fdaf7BtlASF-e4I43wnQKzwT9ZcyMvWE7-2C3GA/exec";
 
   const startBtn = document.getElementById('startBtn');
@@ -81,7 +80,7 @@
   const logList = document.getElementById('logList');
   const html5QrCode = new Html5Qrcode("reader");
   
-  let studentsDb = {}; // Veritabanı telefon hafızasında tutulacak
+  let studentsDb = {};
   let isDbLoaded = false;
   let isProcessing = false;
 
@@ -138,7 +137,7 @@
         if (isProcessing) return;
         isProcessing = true;
         await handleId(decodedText.trim());
-        setTimeout(() => { isProcessing = false; }, 1500); // 1.5 sn sonra yeni okumaya hazır
+        setTimeout(() => { isProcessing = false; }, 1500);
       },
       () => {}
     ).then(() => {
@@ -155,7 +154,7 @@
     const student = studentsDb[id];
     const nowTime = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit', minute:'2-digit'});
 
-    // Öğrenci Bulunamadı
+    // 1. Öğrenci Bulunamadı
     if(!student) {
       playFeedback('err');
       setResult('err', '<div class="name">Kayıt Bulunamadı</div><div class="meta">Böyle bir barkod yok.</div>');
@@ -163,7 +162,16 @@
       return;
     }
 
-    // Zaten Çıkış Yapmış
+    // 2. Cuma Namazı Çıkış Kontrolü
+    const todayDay = new Date().getDay(); // 0=Pazar, 1=Pzt ... 5=Cuma
+    if (student.group === 'Cuma' && todayDay !== 5) {
+      playFeedback('err');
+      setResult('err', `<div class="name">${student.name}</div><div class="meta" style="font-weight:bold; margin-top:5px;">⚠️ Bu öğrenci SADECE Cuma günleri çıkabilir!</div>`);
+      addLog(student.name + ' (Sadece Cuma)', nowTime, 'err');
+      return;
+    }
+
+    // 3. Zaten Çıkış Yapmış
     if(student.scannedToday) {
       playFeedback('err'); 
       setResult('err', `
@@ -177,14 +185,13 @@
       `);
       addLog(student.name, nowTime, 'err');
     }
-    // İlk Çıkış (Sıfır Bekleme)
+    // 4. İlk Çıkış (Başarılı)
     else {
       playFeedback('ok');
-      student.scannedToday = true; // Telefon hafızasında anında çıkış yaptı olarak işaretle
+      student.scannedToday = true;
       setResult('ok', `<div class="name">${student.name}</div><div>✅ ÇIKABİLİR!</div>`);
       addLog(student.name, nowTime, 'ok');
 
-      // Arka planda Google'a "Çıktı" bilgisini gönder
       fetch(DEFAULT_SCRIPT_URL + '?action=logScan&id=' + encodeURIComponent(id), {
         method: 'GET', mode: 'cors', credentials: 'omit'
       }).catch(e => console.log("Arka planda yazma gecikti", e));
