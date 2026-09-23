@@ -164,14 +164,13 @@
     }
 
     // Zaten Çıkış Yapmış
-    // Zaten Çıkış Yapmış
     if(student.scannedToday) {
       playFeedback('err'); 
       setResult('err', `
         <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin: -5px 0;">
           <div style="font-size: 2.2rem; line-height: 1;">❗</div>
           <div style="text-align: left;">
-            <div class="name" style="font-size: 1.25rem; line-height: 1.1;">${student.name} <span class="meta" style="font-size: 0.9rem;">(${student.className || ''})</span></div>
+            <div class="name" style="font-size: 1.25rem; line-height: 1.1;">${student.name}</div>
             <div style="font-size: 1rem; font-weight: bold; margin-top: 3px;">TEKRAR ÇIKIŞ YAPILAMAZ!</div>
           </div>
         </div>
@@ -182,10 +181,10 @@
     else {
       playFeedback('ok');
       student.scannedToday = true; // Telefon hafızasında anında çıkış yaptı olarak işaretle
-      setResult('ok', `<div class="name">${student.name}</div><div class="meta">Sınıf: ${student.className || ''}</div><div>✅ ÇIKABİLİR!</div>`);
+      setResult('ok', `<div class="name">${student.name}</div><div>✅ ÇIKABİLİR!</div>`);
       addLog(student.name, nowTime, 'ok');
 
-      // Arka planda Google'a "Çıktı" bilgisini gönder (Biz beklemiyoruz, o arka planda yazsın)
+      // Arka planda Google'a "Çıktı" bilgisini gönder
       fetch(DEFAULT_SCRIPT_URL + '?action=logScan&id=' + encodeURIComponent(id), {
         method: 'GET', mode: 'cors', credentials: 'omit'
       }).catch(e => console.log("Arka planda yazma gecikti", e));
